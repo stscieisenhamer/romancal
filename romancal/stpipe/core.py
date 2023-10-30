@@ -2,13 +2,18 @@
 Roman Calibration Pipeline base class
 """
 import logging
+import os
 import time
 
 import roman_datamodels as rdm
 from roman_datamodels.datamodels import ImageModel
-from stpipe import Pipeline, Step, crds_client
+from stpipe import Pipeline, Step
 
 from ..lib.suffix import remove_suffix
+
+if os.environ.get("CI") == "false":
+    from stpipe import crds_client
+
 
 _LOG_FORMATTER = logging.Formatter(
     "%(asctime)s.%(msecs)03dZ :: %(name)s :: %(levelname)s :: %(message)s",
@@ -62,11 +67,13 @@ class RomanStep(Step):
 
         # this will only run if 'parent' is none, which happens when an individual
         # step is being run or if self is a RomanPipeline and not a RomanStep.
-        if self.parent is None:
-            model.meta.ref_file.crds.sw_version = crds_client.get_svn_version()
-            model.meta.ref_file.crds.context_used = crds_client.get_context_used(
-                model.crds_observatory
-            )
+
+        if os.environ.get("CI") == "false":  # no CRDS connection, do not run
+            if self.parent is None:
+                model.meta.ref_file.crds.sw_version = crds_client.get_svn_version()
+                model.meta.ref_file.crds.context_used = crds_client.get_context_used(
+                    model.crds_observatory
+                )
 
     def record_step_status(self, model, step_name, success=True):
         """
